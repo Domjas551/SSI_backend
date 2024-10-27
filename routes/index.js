@@ -9,10 +9,21 @@ const pool=mysql.createPool({
   database: 'ssi_db'
 })
 
+class tast_type{
+
+  name;
+
+  constructor(name) {
+    this.name=name;
+  }
+
+}
+
 function select(){
   pool.query("Select * from task_type", (err, result)=> {
     if (err) throw err;
-    console.log(result);
+    t1=new tast_type(result[0].name);
+    console.log(t1);
   });
 }
 
