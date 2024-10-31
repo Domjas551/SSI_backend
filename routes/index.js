@@ -26,6 +26,7 @@ function select(){
     if (err) throw err;
     t1=new tast_type(result[0].name);
     console.log(t1);
+    console.log(result);
   });
 }
 
@@ -41,9 +42,21 @@ function select2(){
   })
 }
 
+function selectUserData(){
+  return new Promise((resolve, reject)=>{
+    pool.query("Select user_id, name, surname, email, position, is_active from user", (err, result)=> {
+      if(err){
+        console.log(err);
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
+
 
 function insert(){
-  pool.query("Insert into task_type values(6,'test')", (err, result)=> {
+  pool.query("Insert into task_type values(null,'test')", (err, result)=> {
     if (err) throw err;
     console.log(result);
   });
@@ -76,8 +89,23 @@ router.get("/type",(req,res)=>{
 })
 
 router.post("/post",(req,res)=>{
-  console.log(req.body);
-  res.send({message:"mam"});
+  console.log(req.body["value"]);
+
+  if(req.body["value"] == 1){
+    res.send({message:"1001"});
+  }else{
+    res.send({message:"Error: Podano niepoprawną wartość"});
+  }
+
+})
+
+//metoda do zwracania danych użytkowników
+router.get("/users",(req,res)=>{
+
+  selectUserData().then((data)=>{
+    res.send(data);
+  })
+
 })
 
 
