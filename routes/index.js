@@ -54,7 +54,44 @@ function selectUserData(){
   })
 }
 
+//funkcja do pobierania danych wszystkich użytkowników
+function selectUsersData(){
+  return new Promise((resolve, reject)=>{
+    pool.query("Select user_id, name, surname, email, position, is_active from user", (err, result)=> {
+      if(err){
+        console.log(err);
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
 
+//funkcja do pobierania danych konkretnego użytkownika
+function selectUserData(id){
+  return new Promise((resolve, reject)=>{
+    pool.query(`Select user_id, name, surname, email, position, is_active from user where user_id=${id}`, (err, result)=> {
+      if(err){
+        console.log(err);
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
+
+//funkcja do aktualizacji danych użytkownika
+function updateUserData(id,name,surname,position,is_active){
+  return new Promise((resolve, reject)=>{
+    pool.query(`Update user set name="${name}", surname="${surname}", position="${position}", is_active=${is_active} where user_id=${id}`, (err, result)=> {
+      if(err){
+        console.log(err);
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
 function insert(){
   pool.query("Insert into task_type values(null,'test')", (err, result)=> {
     if (err) throw err;
@@ -88,24 +125,29 @@ router.get("/type",(req,res)=>{
 
 })
 
-router.post("/post",(req,res)=>{
-  console.log(req.body["value"]);
-
-  if(req.body["value"] == 1){
-    res.send({message:"1001"});
-  }else{
-    res.send({message:"Error: Podano niepoprawną wartość"});
-  }
-
-})
-
 //metoda do zwracania danych użytkowników
 router.get("/users",(req,res)=>{
 
-  selectUserData().then((data)=>{
+  selectUsersData().then((data)=>{
     res.send(data);
   })
 
+})
+
+//metoda do zwracania danych konkretnego użytkownika
+router.post("/user",(req,res)=>{
+  selectUserData(req.body.value).then((data)=>{
+    res.send(data);
+  })
+
+})
+
+//metoda do edycji danych użytkownika
+router.put("/user",(req,res)=>{
+  updateUserData(req.body.id,req.body.name,req.body.surname,req.body.position,req.body.is_active)
+  selectUserData(req.body.id).then((data)=>{
+    res.send(data)
+  })
 })
 
 
