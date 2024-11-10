@@ -11,55 +11,19 @@ const pool=mysql.createPool({
   database: 'ssi_db'
 })
 
-class tast_type{
-
-  name;
-
-  constructor(name) {
-    this.name=name;
-  }
-
-}
-
-function select(){
-  pool.query("Select * from task_type", (err, result)=> {
-    if (err) throw err;
-    t1=new tast_type(result[0].name);
-    console.log(t1);
-    console.log(result);
-  });
-}
-
-function select2(){
-  return new Promise((resolve, reject)=>{
-    pool.query("Select * from task_type", (err, result)=> {
-      if(err){
-        console.log(err);
-      }else{
-        resolve(result);
-      }
-    });
-  })
-}
-
-function selectUserData(){
-  return new Promise((resolve, reject)=>{
-    pool.query("Select user_id, name, surname, email, position, is_active from user", (err, result)=> {
-      if(err){
-        console.log(err);
-      }else{
-        resolve(result);
-      }
-    });
-  })
-}
-
 //funkcja do pobierania danych wszystkich użytkowników
-function selectUsersData(){
+function selectUsersData(query="Select user_id, name, surname, email, position, is_active from user"){
   return new Promise((resolve, reject)=>{
-    pool.query("Select user_id, name, surname, email, position, is_active from user", (err, result)=> {
+    pool.query(query, (err, result)=> {
       if(err){
-        console.log(err);
+        console.log(err.code);
+        let message;
+
+        if(err.code=="ECONNREFUSED"){
+          message="Can't connect to data base";
+        }
+
+        reject(message)
       }else{
         resolve(result);
       }
@@ -106,31 +70,32 @@ router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express backend!' });
 });
 
-router.get('/i', async(req, res, next)=> {
-  insert();
-  res.render('index', { title: 'Express backend!' });
-});
-
-router.get('/s', async(req, res, next)=> {
-  select();
-  res.render('index', { title: 'Express backend!' });
-});
-
-router.get("/type",(req,res)=>{
-
-  select2().then((data)=>{
-    console.log(data);
-    res.send(data);
-  })
-
-})
-
 //metoda do zwracania danych użytkowników
 router.get("/users",(req,res)=>{
 
   selectUsersData().then((data)=>{
     res.send(data);
+  }).catch((error)=>{
+    //wysyłanie wiadomości o błędzie na frontend
+    res.send([{ error: error}]);
   })
+
+})
+
+//Metoda do filtrowania użytkowników
+router.post("/users",(req,res)=>{
+
+  console.log(req.body.query)
+
+  if(req.body.query==null){
+    selectUsersData().then((data)=>{
+      res.send(data);
+    })
+  }else{
+    selectUsersData(req.body.query).then((data)=>{
+      res.send(data);
+    })
+  }
 
 })
 
