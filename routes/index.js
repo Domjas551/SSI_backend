@@ -20,7 +20,9 @@ function selectUsersData(query="Select user_id, name, surname, email, position, 
         let message;
 
         if(err.code=="ECONNREFUSED"){
-          message="Can't connect to data base";
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message="Błąd przy próbie pobrania danych";
         }
 
         reject(message)
@@ -37,6 +39,16 @@ function selectUserData(id){
     pool.query(`Select user_id, name, surname, email, position, is_active from user where user_id=${id}`, (err, result)=> {
       if(err){
         console.log(err);
+
+        let message;
+
+        if(err.code=="ECONNREFUSED"){
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message="Błąd przy próbie pobrania danych";
+        }
+
+        reject(message)
       }else{
         resolve(result);
       }
@@ -50,6 +62,16 @@ function updateUserData(id,name,surname,position,is_active){
     pool.query(`Update user set name="${name}", surname="${surname}", position="${position}", is_active=${is_active} where user_id=${id}`, (err, result)=> {
       if(err){
         console.log(err);
+
+        let message;
+
+        if(err.code=="ECONNREFUSED"){
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message="Błąd przy próbie aktualizacji danych";
+        }
+
+        reject(message)
       }else{
         resolve(result);
       }
@@ -90,10 +112,16 @@ router.post("/users",(req,res)=>{
   if(req.body.query==null){
     selectUsersData().then((data)=>{
       res.send(data);
+    }).catch((error)=>{
+      //wysyłanie wiadomości o błędzie na frontend
+      res.send([{ error: error}]);
     })
   }else{
     selectUsersData(req.body.query).then((data)=>{
       res.send(data);
+    }).catch((error)=>{
+      //wysyłanie wiadomości o błędzie na frontend
+      res.send([{ error: error}]);
     })
   }
 
@@ -103,15 +131,33 @@ router.post("/users",(req,res)=>{
 router.post("/user",(req,res)=>{
   selectUserData(req.body.value).then((data)=>{
     res.send(data);
+  }).catch((error)=>{
+    //wysyłanie wiadomości o błędzie na frontend
+    res.send([{ error: error}]);
   })
 
 })
 
 //metoda do edycji danych użytkownika
 router.put("/user",(req,res)=>{
-  updateUserData(req.body.id,req.body.name,req.body.surname,req.body.position,req.body.is_active)
+
+  let alfa=0;
+
+  updateUserData(req.body.id,req.body.name,req.body.surname,req.body.position,req.body.is_active).catch((error)=>{
+    alfa=1;
+    //wysyłanie wiadomości o błędzie na frontend
+    res.send([{ error: error}]);
+  })
+
   selectUserData(req.body.id).then((data)=>{
-    res.send(data)
+    if(alfa==0){
+      res.send(data)
+    }
+  }).catch((error)=>{
+    if(alfa==0){
+      //wysyłanie wiadomości o błędzie na frontend
+      res.send([{ error: error}]);
+    }
   })
 })
 
