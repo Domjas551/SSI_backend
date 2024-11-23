@@ -368,7 +368,7 @@ router.put("/login",(req,res)=>{
 
   login(req.body.email,req.body.password).then((data)=>{
 
-    res.send([{uprawnienia: data}]);
+    res.send([{uprawnienia: data, email:req.body.email }]);
 
   }).catch((error) => {
     //wysyłanie wiadomości o błędzie na frontend
@@ -376,7 +376,6 @@ router.put("/login",(req,res)=>{
   })
 
 })
-
 
 //metoda do zwracania danych typów zadań
 router.get("/taskTypes",(req,res)=>{
