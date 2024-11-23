@@ -205,6 +205,27 @@ function login(email, password){
   })
 }
 
+//funkcja do dodawania nowych zadań
+function insertTask(typeId,description,status,date,deadline){
+  return new Promise((resolve, reject)=>{
+    pool.query(`Insert into task values(null, ${typeId}, "${description}", "${status}", "${date}", "${deadline}")`, (err, result)=> {
+      if(err){
+        console.log(err)
+        let message;
+
+        if(err.code=="ECONNREFUSED"){
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message="Błąd przy próbie dodania danych";
+        }
+        reject(message)
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
+
 //funkcja do dodawania nowych typów zadań
 function insertTaskType(query){
   return new Promise((resolve, reject)=>{
@@ -332,7 +353,6 @@ router.get("/admin/userAdd",(req,res)=>{
     //wysyłanie wiadomości o błędzie na frontend
     res.send([{ error: error}]);
   })
-
 })
 
 //metoda do dodawania nowych użytkowników
@@ -361,6 +381,16 @@ router.put("/admin/userAdd",(req,res)=>{
   })
 
 })
+
+router.put("/manager/taskAdd", (req, res) => {
+  insertTask(req.body.typeId, req.body.description, req.body.status, req.body.date, req.body.deadline)
+      .then(() => {
+        res.status(200).json([{ message: "Task added successfully" }]);
+      })
+      .catch((error) => {
+        res.status(500).json([{ error: error }]);
+      });
+});
 
 //metoda do logowania
 router.put("/login",(req,res)=>{
