@@ -3,6 +3,7 @@ var express = require('express');
 const {log} = require("debug");
 var router = express.Router();
 const app = express();
+const bcrypt=require('bcrypt')
 
 const pool=mysql.createPool({
   host:'127.0.0.1',
@@ -165,6 +166,45 @@ function insertUser(name,surname,password,email,phone,position){
   })
 }
 
+//funkcja do logowania
+function login(email, password){
+  return new Promise((resolve, reject)=>{
+    pool.query(`Select password, position from user where email="${email}" and is_active=1`, (err, result)=> {
+      if(err){
+
+        let message;
+
+        if(err.code=="ECONNREFUSED"){
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message="Błąd przy próbie pobrania danych";
+        }
+
+        reject(message)
+      }else{
+
+        bcrypt.compare(password,result[0].password, function(err,res){
+
+          let uprawnienia;
+
+          if(res){
+            if(result[0].position=="pracownik"){
+              uprawnienia=3;
+            }else if(result[0].position=="kierownik"){
+              uprawnienia=2;
+            }else{
+              uprawnienia=1
+            }
+          }else{
+            uprawnienia=-1;
+          }
+          resolve(uprawnienia);
+        })
+      }
+    });
+  })
+}
+
 //funkcja do dodawania nowych typów zadań
 function insertTaskType(query){
   return new Promise((resolve, reject)=>{
@@ -295,14 +335,17 @@ router.get("/admin/userAdd",(req,res)=>{
 
 })
 
+//metoda do dodawania nowych użytkowników
 router.put("/admin/userAdd",(req,res)=>{
 
   let alfa = 0;
 
-  insertUser(req.body.name,req.body.surname,req.body.password,req.body.email,req.body.phone,req.body.position,).catch((error) => {
-    alfa = 1;
-    //wysyłanie wiadomości o błędzie na frontend
-    res.send([{error: error}]);
+  bcrypt.hash(req.body.password,10,function(err, hash){
+    insertUser(req.body.name,req.body.surname,hash,req.body.email,req.body.phone,req.body.position).catch((error) => {
+      alfa = 1;
+      //wysyłanie wiadomości o błędzie na frontend
+      res.send([{error: error}]);
+    })
   })
 
   getEmails().then((data)=>{
@@ -318,6 +361,22 @@ router.put("/admin/userAdd",(req,res)=>{
   })
 
 })
+
+//metoda do logowania
+router.put("/login",(req,res)=>{
+
+
+  login(req.body.email,req.body.password).then((data)=>{
+
+    res.send([{uprawnienia: data}]);
+
+  }).catch((error) => {
+    //wysyłanie wiadomości o błędzie na frontend
+    res.send([{error: error}]);
+  })
+
+})
+
 
 //metoda do zwracania danych typów zadań
 router.get("/taskTypes",(req,res)=>{
