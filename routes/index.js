@@ -105,7 +105,6 @@ function resetUserPassword(id,password){
   return new Promise((resolve, reject)=>{
     pool.query(`Update user set password="${password}" where user_id=${id}`, (err, result)=> {
       if(err){
-
         let message;
 
         if(err.code=="ECONNREFUSED"){
@@ -324,10 +323,13 @@ router.put("/user",(req,res)=>{
       }
     })
   }else{
-    resetUserPassword(req.body.id, req.body.password).catch((error)=>{
-      alfa=1;
-      //wysyłanie wiadomości o błędzie na frontend
-      res.send([{ error: error}]);
+
+    bcrypt.hash(req.body.password,10,function(err, hash){
+      resetUserPassword(req.body.id, hash).catch((error)=>{
+        alfa=1;
+        //wysyłanie wiadomości o błędzie na frontend
+        res.send([{ error: error}]);
+      })
     })
 
     selectUserData(req.body.id).then((data)=>{
@@ -395,6 +397,40 @@ router.put("/manager/taskAdd", (req, res) => {
 //metoda do logowania
 router.put("/login",(req,res)=>{
 
+  //blok do haszowania haseł
+  //wymaga zmiany w selectUsersData dodać hasło w zwracanych
+  /*
+  selectUsersData().then((data)=>{
+
+    for (const user of data) {
+
+      bcrypt.hash(user.password,10,function(err, hash){
+      return new Promise((resolve, reject)=>{
+
+          pool.query(`Update user set password="${hash}" where user_id=${user.user_id}`, (err, result)=> {
+          if(err){
+            let message;
+
+            if(err.code=="ECONNREFUSED"){
+              message="Nie można połączyć sie z bazą danych";
+            }else if(err.code=="ER_PARSE_ERROR"){
+              message="Błąd przy próbie aktualizacji danych";
+            }
+
+            reject(message)
+          }else{
+            resolve(result);
+          }
+        });
+
+      })
+
+    })
+    }
+  }).catch((error)=>{
+    //wysyłanie wiadomości o błędzie na frontend
+    console.log("err")
+  })*/
 
   login(req.body.email,req.body.password).then((data)=>{
 
