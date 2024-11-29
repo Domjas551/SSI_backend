@@ -34,6 +34,25 @@ function selectUsersData(query="Select user_id, name, surname, email, position, 
   })
 }
 
+//funkcja do pobierania danych wszystkich zadań
+function selectTasksData(query="Select task.task_id, task.task_type_id, task_type.name, task.status, task.date, task.deadline from task join task_type on task.task_type_id=task_type.task_type_id"){
+  return new Promise((resolve, reject)=>{
+    pool.query(query, (err, result)=> {
+      if(err){
+        let message;
+        if(err.code=="ECONNREFUSED"){
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message="Błąd przy próbie pobrania danych";
+        }
+        reject(message)
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
+
 //funkcja do pobierania emaili wszystkich użytkowników
 function getEmails(){
   return new Promise((resolve, reject)=>{
@@ -78,6 +97,25 @@ function selectUserData(id){
   })
 }
 
+//funkcja do pobierania danych konkretnego zadania
+function selectTaskData(id){
+  return new Promise((resolve, reject)=>{
+    pool.query(`Select task.task_id, task.task_type_id, task_type.name, task.status, task.date, task.deadline, task.description from task join task_type on task.task_type_id=task_type.task_type_id where task.task_id=${id}`, (err, result)=> {
+      if(err){
+        let message;
+        if(err.code=="ECONNREFUSED"){
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message=`Błąd przy próbie pobrania danych TaskID: ${id}`;
+        }
+        reject(message)
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
+
 //funkcja do aktualizacji danych użytkownika
 function updateUserData(id,name,surname,position,is_active){
   return new Promise((resolve, reject)=>{
@@ -86,6 +124,26 @@ function updateUserData(id,name,surname,position,is_active){
 
         let message;
 
+        if(err.code=="ECONNREFUSED"){
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message="Błąd przy próbie aktualizacji danych";
+        }
+
+        reject(message)
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
+
+//funkcja do aktualizacji danych zadań
+function updateTaskData(id, typeId, state, description, date, deadline){
+  return new Promise((resolve, reject)=>{
+    pool.query(`Update task set task_type_id=${typeId}, status="${state}", description="${description}", date="${date}", deadline="${deadline}" where task_id=${id}`, (err, result)=> {
+      if(err){
+        let message;
         if(err.code=="ECONNREFUSED"){
           message="Nie można połączyć sie z bazą danych";
         }else if(err.code=="ER_PARSE_ERROR"){
@@ -266,6 +324,18 @@ router.get("/users",(req,res)=>{
 
 })
 
+//metoda do zwracania danych zadań
+router.get("/tasks",(req,res)=>{
+
+  selectTasksData().then((data)=>{
+    res.send(data);
+  }).catch((error)=>{
+    //wysyłanie wiadomości o błędzie na frontend
+    res.send([{ error: error}]);
+  })
+})
+
+
 //Metoda do filtrowania użytkowników
 router.post("/users",(req,res)=>{
 
@@ -290,6 +360,17 @@ router.post("/users",(req,res)=>{
 //metoda do zwracania danych konkretnego użytkownika
 router.post("/user",(req,res)=>{
   selectUserData(req.body.value).then((data)=>{
+    res.send(data);
+  }).catch((error)=>{
+    //wysyłanie wiadomości o błędzie na frontend
+    res.send([{ error: error}]);
+  })
+
+})
+
+//metoda do zwracania danych konkretnego zadania
+router.post("/task",(req,res)=>{
+  selectTaskData(req.body.value).then((data)=>{
     res.send(data);
   }).catch((error)=>{
     //wysyłanie wiadomości o błędzie na frontend
@@ -345,6 +426,24 @@ router.put("/user",(req,res)=>{
   }
 
 })
+
+//metoda do edycji danych zadań
+router.put("/task", (req, res) => {
+  const { id, type_id, state, description, date, deadline } = req.body;
+
+  if (!id || !type_id || !state || !date || !deadline) {
+    res.status(400).send([{ error: "Wszystkie pola są wymagane" }]);
+    return;
+  }
+
+  updateTaskData(id, type_id, state, description, date, deadline)
+      .then((result) => {
+        res.status(200).send([{ success: "Dane zadania zostały zaktualizowane" }]);
+      })
+      .catch((error) => {
+        res.status(500).send([{ error: error }]);
+      });
+});
 
 //metoda do pobierania emaili użytkowników
 router.get("/admin/userAdd",(req,res)=>{
@@ -467,6 +566,27 @@ router.post("/taskTypes",(req,res)=>{
     })
   }else{
     selectTaskTypesData(req.body.query).then((data)=>{
+      res.send(data);
+    }).catch((error)=>{
+      //wysyłanie wiadomości o błędzie na frontend
+      res.send([{ error: error}]);
+    })
+  }
+
+})
+
+//Metoda do filtrowania danych zadań
+router.post("/tasks",(req,res)=>{
+
+  if(req.body.query==null){
+    selectTasksData().then((data)=>{
+      res.send(data);
+    }).catch((error)=>{
+      //wysyłanie wiadomości o błędzie na frontend
+      res.send([{ error: error}]);
+    })
+  }else{
+    selectTasksData(req.body.query).then((data)=>{
       res.send(data);
     }).catch((error)=>{
       //wysyłanie wiadomości o błędzie na frontend
