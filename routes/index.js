@@ -34,6 +34,47 @@ function selectUsersData(query="Select user_id, name, surname, email, position, 
   })
 }
 
+//funkcja do pobierania danych wszystkich pracowników przypisanych do zadania
+function selectAppointedUserData(id){
+  return new Promise((resolve, reject)=>{
+    pool.query(`Select user.user_id, user.name, user.surname, user.email, user.position from user left join user_task on user.user_id=user_task.user_id where user.is_active=1 and user_task.task_id=${id}`, (err, result)=> {
+      if(err){
+        let message;
+        if(err.code=="ECONNREFUSED"){
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message="Błąd przy próbie pobrania danych";
+        }
+        reject(message)
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
+
+//funkcja do pobierania danych wszystkich pracowników nie przypisanych do zadania
+function selectNotAppointedUserData(id){
+  return new Promise((resolve, reject)=>{
+    pool.query(`SELECT user.user_id, user.name, user.surname, user.email, user.position FROM user LEFT JOIN user_task ON user.user_id = user_task.user_id AND user_task.task_id =${id} WHERE user_task.task_id IS NULL and user.is_active=1`, (err, result)=> {
+      if(err){
+
+        let message;
+
+        if(err.code=="ECONNREFUSED"){
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message="Błąd przy próbie pobrania danych";
+        }
+
+        reject(message)
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
+
 //funkcja do pobierania danych wszystkich zadań
 function selectTasksData(query="Select task.task_id, task.task_type_id, task_type.name, task.status, task.date, task.deadline from task join task_type on task.task_type_id=task_type.task_type_id"){
   return new Promise((resolve, reject)=>{
@@ -223,6 +264,48 @@ function insertUser(name,surname,password,email,phone,position){
   })
 }
 
+//funkcja do przypisywania użytkowników do zadań
+function assignUser(taskId, userId){
+  return new Promise((resolve, reject)=>{
+    pool.query(`Insert into user_task values(${userId}, ${taskId})`, (err, result)=> {
+      if(err){
+        console.log(err)
+        let message;
+
+        if(err.code=="ECONNREFUSED"){
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message="Błąd przy próbie dodania danych";
+        }
+
+        reject(message)
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
+
+//funkcja do cofania przypisań użytkowników do zadań
+function unassignUser(taskId, userId){
+  return new Promise((resolve, reject)=>{
+    pool.query(`DELETE FROM user_task WHERE user_id = ${userId} AND task_id = ${taskId}`, (err, result)=> {
+      if(err){
+        console.log(err)
+        let message;
+        if(err.code=="ECONNREFUSED"){
+          message="Nie można połączyć sie z bazą danych";
+        }else if(err.code=="ER_PARSE_ERROR"){
+          message="Błąd przy próbie dodania danych";
+        }
+        reject(message)
+      }else{
+        resolve(result);
+      }
+    });
+  })
+}
+
 //funkcja do logowania
 function login(email, password){
   return new Promise((resolve, reject)=>{
@@ -379,6 +462,28 @@ router.post("/task",(req,res)=>{
 
 })
 
+//metoda do zwracania danych uzytkowników przypisanych do konkretnego zadania
+router.post("/usersAppointedToTask",(req,res)=>{
+  selectAppointedUserData(req.body.value).then((data)=>{
+    res.send(data);
+  }).catch((error)=>{
+    //wysyłanie wiadomości o błędzie na frontend
+    res.send([{ error: error}]);
+  })
+
+})
+
+//metoda do zwracania danych uzytkowników nie przypisanych do konkretnego zadania
+router.post("/usersNotAppointedToTask",(req,res)=>{
+  selectNotAppointedUserData(req.body.value).then((data)=>{
+    res.send(data);
+  }).catch((error)=>{
+    //wysyłanie wiadomości o błędzie na frontend
+    res.send([{ error: error}]);
+  })
+
+})
+
 //metoda do edycji danych użytkownika
 router.put("/user",(req,res)=>{
 
@@ -492,6 +597,28 @@ router.put("/manager/taskAdd", (req, res) => {
         res.status(500).json([{ error: error }]);
       });
 });
+
+router.put("/manager/assign", (req, res) => {
+  assignUser(req.body.taskId, req.body.userId)
+      .then(() => {
+        res.status(200).json([{ message: "User assigned successfully" }]);
+      })
+      .catch((error) => {
+        res.status(500).json([{ error: error }]);
+      });
+});
+
+router.put("/manager/unassign", (req, res) => {
+  unassignUser(req.body.taskId, req.body.userId)
+      .then(() => {
+        res.status(200).json([{ message: "User unassigned successfully" }]);
+      })
+      .catch((error) => {
+        res.status(500).json([{ error: error }]);
+      });
+});
+
+
 
 //metoda do logowania
 router.put("/login",(req,res)=>{
